@@ -251,6 +251,7 @@ void printControls() {
 }
 
 void printResult(const Field field) {
+    printField(field);
     printf("\n");
     if (field.numClosed == field.numMines)
         printf("Congratulations, you win!\n");
@@ -258,30 +259,35 @@ void printResult(const Field field) {
         printf("OOPS! You lost...\n");
 }
 
-int main(void) {
-    enableCanonical();
-    srand(time(NULL));
+void runGame(Field *const field){
     const size_t ROWS = 10;
     const size_t COLS = 10;
     const size_t MINE_PERCENTAGE = 20;
 
-    Field field;
-    fieldInit(&field);
-    fieldResize(&field, ROWS, COLS);
+    fieldInit(field);
+    fieldResize(field, ROWS, COLS);
 
-    printControls();
     bool running = true;
     bool first = true;
     char action = 0;
     while (running) {
-        printField(field);
+        printField(*field);
         read(STDIN_FILENO, &action, 1);
         action = tolower(action);
-        running = performAction(&field, action, &first, MINE_PERCENTAGE);
-        printf("%c[%zuA", 27, field.rows);
-        printf("%c[%zuD", 27, field.cols * 3);
+        running = performAction(field, action, &first, MINE_PERCENTAGE);
+        printf("%c[%zuA", 27, field->rows);
+        printf("%c[%zuD", 27, field->cols * 3);
     }
-    printField(field);
+}
+
+int main(void) {
+    enableCanonical();
+    srand(time(NULL));
+
+    printControls();
+
+    Field field;
+    runGame(&field);
     printResult(field);
 
     freeField(&field);
