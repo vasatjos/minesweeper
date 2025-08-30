@@ -34,6 +34,7 @@ typedef struct {
     ECell *cells;
     ECellState *states;
     size_t cursorRow, cursorCol;
+    size_t numMines, numClosed;
 } Field;
 
 void fieldInit(Field *const field) {
@@ -41,6 +42,8 @@ void fieldInit(Field *const field) {
     field->cursorRow = field->cursorCol = 0;
     field->cells = NULL;
     field->states = NULL;
+    field->numMines = 0;
+    field->numClosed = 0;
 }
 
 void freeField(Field *const field) {
@@ -48,6 +51,19 @@ void freeField(Field *const field) {
     free(field->states);
     field->cells = NULL;
     field->states = NULL;
+}
+
+void fieldResize(Field *const field, const size_t rows, const size_t cols) {
+    freeField(field);
+    field->cells = (ECell *)malloc(sizeof(ECell) * rows * cols);
+    field->states = (ECellState *)malloc(sizeof(ECellState) * rows * cols);
+    field->rows = rows;
+    field->cols = cols;
+    for (size_t i = 0; i < rows * cols; i++) {
+        field->cells[i] = EMPTY;
+        field->states[i] = CLOSED;
+    }
+    field->numClosed = rows * cols;
 }
 
 ECell *cellAtIndex(const Field field, const size_t row, const size_t col) {
@@ -74,11 +90,16 @@ bool isAtCursor(const Field field, const size_t row, const size_t col) {
 void generateMines(Field *const field, const size_t minePercentage) {
     if (minePercentage > MAX_MINE_PERCENTAGE) {
         printf("ERROR: Mine percentage too high.\n");
+        exit(1);
     }
-    size_t mineCount = field->rows * field->cols * minePercentage / 100;
+    field->numMines = field->rows * field->cols * minePercentage / 100;
     size_t row = 0, col = 0;
     ECell *cell;
-    for (size_t i = 0; i < mineCount; i++) {
+
+    for (size_t i = 0; i < field->rows * field->cols; i++)
+        field->cells[i] = EMPTY;
+
+    for (size_t i = 0; i < field->numMines; i++) {
         do {
             row = rand() % field->rows;
             col = rand() % field->cols;
@@ -87,11 +108,15 @@ void generateMines(Field *const field, const size_t minePercentage) {
     }
 }
 
-ECell openAtCursor(const Field field) {
-    ECellState *state = stateAtIndex(field, field.cursorRow, field.cursorCol);
-    if (*state == CLOSED)
+ECell openAtCursor(Field *const field) {
+    ECellState *state =
+        stateAtIndex(*field, field->cursorRow, field->cursorCol);
+    if (*state == CLOSED) {
         *state = OPEN;
-    return *cellAtIndex(field, field.cursorRow, field.cursorCol);
+        field->numClosed--;
+        return *cellAtIndex(*field, field->cursorRow, field->cursorCol);
+    }
+    return EMPTY;
 }
 
 void flagAtCursor(const Field field) {
@@ -102,18 +127,6 @@ void flagAtCursor(const Field field) {
     }
     if (*state == FLAGGED)
         *state = CLOSED;
-}
-
-void fieldResize(Field *const field, const size_t rows, const size_t cols) {
-    freeField(field);
-    field->cells = (ECell *)malloc(sizeof(ECell) * rows * cols);
-    field->states = (ECellState *)malloc(sizeof(ECellState) * rows * cols);
-    field->rows = rows;
-    field->cols = cols;
-    for (size_t i = 0; i < rows * cols; i++) {
-        field->cells[i] = EMPTY;
-        field->states[i] = CLOSED;
-    }
 }
 
 size_t countNeighborMines(const Field field, const size_t row,
@@ -143,7 +156,7 @@ void printField(const Field field) {
                 printf(" ");
             switch (*stateAtIndex(field, r, c)) {
             case FLAGGED:
-                printf("F");
+                printf("\033[31mF\033[0m");
                 break;
             case CLOSED:
                 printf(".");
@@ -160,7 +173,7 @@ void printField(const Field field) {
                     printf(" ");
                 break;
             default:
-                printf("ERROR: Inavlid cell state.\n");
+                printf("ERROR: Invalid cell state.\n");
                 exit(1);
             }
             if (isAtCursor(field, r, c))
@@ -172,7 +185,15 @@ void printField(const Field field) {
     }
 }
 
-bool performAction(Field *const field, const char action) {
+void revealMines(Field *const field) {
+    for (size_t i = 0; i < field->rows * field->cols; i++) {
+        if (field->cells[i] == MINE)
+            field->states[i] = OPEN;
+    }
+}
+
+bool performAction(Field *const field, const char action, bool *first,
+                   const size_t minePercentage) {
     switch (action) {
     case 'w':
         if (field->cursorRow > 0)
@@ -191,15 +212,52 @@ bool performAction(Field *const field, const char action) {
             field->cursorCol++;
         break;
     case ' ':
-        if (openAtCursor(*field) == MINE) {
-            // TODO: Open all mines
+        if (*first) {
+            bool hasMineNeighbors;
+            bool isMine;
+            do {
+                generateMines(field, minePercentage);
+
+                hasMineNeighbors = countNeighborMines(*field, field->cursorRow,
+                                                      field->cursorCol) != 0;
+                isMine = *cellAtIndex(*field, field->cursorRow,
+                                      field->cursorCol) == MINE;
+
+            } while (hasMineNeighbors || isMine);
+            *first = false;
+        }
+        if (openAtCursor(field) == MINE) {
+            revealMines(field);
             return false;
         }
+        break;
     case 'f':
         flagAtCursor(*field);
+        break;
+    default:
+        break;
     }
+    if (field->numClosed == field->numMines)
+        return false;
     return true;
 }
+
+void printControls() {
+    printf("\n----- MINESWEEPER -----\n");
+    printf("Move: W, S, A, D\n");
+    printf("Open a field: <SPACE>\n");
+    printf("Flag a suspected mine: F\n");
+    printf("-----------------------\n\n");
+}
+
+void printResult(const Field field) {
+    printf("\n");
+    if (field.numClosed == field.numMines)
+        printf("Congratulations, you win!\n");
+    else
+        printf("OOPS! You lost...\n");
+}
+
 int main(void) {
     enableCanonical();
     srand(time(NULL));
@@ -210,17 +268,21 @@ int main(void) {
     Field field;
     fieldInit(&field);
     fieldResize(&field, ROWS, COLS);
-    generateMines(&field, MINE_PERCENTAGE);
 
+    printControls();
     bool running = true;
+    bool first = true;
     char action = 0;
     while (running) {
         printField(field);
         read(STDIN_FILENO, &action, 1);
         action = tolower(action);
-        running = performAction(&field, action);
+        running = performAction(&field, action, &first, MINE_PERCENTAGE);
+        printf("%c[%zuA", 27, field.rows);
+        printf("%c[%zuD", 27, field.cols * 3);
     }
     printField(field);
+    printResult(field);
 
     freeField(&field);
     return EXIT_SUCCESS;
