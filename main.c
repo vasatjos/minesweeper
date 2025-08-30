@@ -242,24 +242,31 @@ bool performAction(Field *const field, const char action, bool *first,
     return true;
 }
 
+bool isMineOpen(const Field field) {
+    for (size_t i = 0; i < field.rows * field.cols; i++)
+        if (field.cells[i] == MINE && field.states[i] == OPEN)
+            return true;
+    return false;
+}
+
 void printControls() {
-    printf("\n----- MINESWEEPER -----\n");
+    printf("\n------ MINESWEEPER ------\n");
     printf("Move: W, S, A, D\n");
     printf("Open a field: <SPACE>\n");
     printf("Flag a suspected mine: F\n");
-    printf("-----------------------\n\n");
+    printf("-------------------------\n\n");
 }
 
 void printResult(const Field field) {
     printField(field);
     printf("\n");
-    if (field.numClosed == field.numMines)
-        printf("Congratulations, you win!\n");
-    else
+    if (isMineOpen(field))
         printf("OOPS! You lost...\n");
+    else
+        printf("Congratulations, you win!\n");
 }
 
-void runGame(Field *const field){
+void runGame(Field *const field) {
     const size_t ROWS = 10;
     const size_t COLS = 10;
     const size_t MINE_PERCENTAGE = 20;
