@@ -37,13 +37,15 @@ typedef struct {
     size_t numMines, numClosed;
 } Field;
 
-void fieldInit(Field *const field) {
-    field->rows = field->cols = 0;
-    field->cursorRow = field->cursorCol = 0;
-    field->cells = NULL;
-    field->states = NULL;
-    field->numMines = 0;
-    field->numClosed = 0;
+Field fieldCreate() {
+    Field field;
+    field.rows = field.cols = 0;
+    field.cursorRow = field.cursorCol = 0;
+    field.cells = NULL;
+    field.states = NULL;
+    field.numMines = 0;
+    field.numClosed = 0;
+    return field;
 }
 
 void freeField(Field *const field) {
@@ -271,7 +273,6 @@ void runGame(Field *const field) {
     const size_t COLS = 10;
     const size_t MINE_PERCENTAGE = 20;
 
-    fieldInit(field);
     fieldResize(field, ROWS, COLS);
 
     bool running = true;
@@ -293,7 +294,7 @@ int main(void) {
 
     printControls();
 
-    Field field;
+    Field field = fieldCreate();
     runGame(&field);
     printResult(field);
 
