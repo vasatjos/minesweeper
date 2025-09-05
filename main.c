@@ -149,6 +149,18 @@ size_t countNeighborMines(const Field field, const size_t row,
     return mines;
 }
 
+void printOpenTile(const Field field, const size_t row, const size_t col) {
+    if (*cellAtIndex(field, row, col) == MINE) {
+        printf("@");
+        return;
+    }
+    size_t neighboringMines = countNeighborMines(field, row, col);
+    if (neighboringMines)
+        printf("%zu", neighboringMines);
+    else
+        printf(" ");
+}
+
 void printField(const Field field) {
     for (size_t r = 0; r < field.rows; r++) {
         for (size_t c = 0; c < field.cols; c++) {
@@ -164,15 +176,7 @@ void printField(const Field field) {
                 printf(".");
                 break;
             case OPEN:
-                if (*cellAtIndex(field, r, c) == MINE) {
-                    printf("@");
-                    break;
-                }
-                size_t neighboringMines = countNeighborMines(field, r, c);
-                if (neighboringMines)
-                    printf("%zu", neighboringMines);
-                else
-                    printf(" ");
+                printOpenTile(field, r, c);
                 break;
             default:
                 printf("ERROR: Invalid cell state.\n");
@@ -194,8 +198,20 @@ void revealMines(Field *const field) {
     }
 }
 
-bool performAction(Field *const field, const char action, bool *first,
-                   const size_t minePercentage) {
+void generateAtCursor(Field *const field, const size_t minePercentage) {
+    bool hasMineNeighbors;
+    bool isMine;
+    do {
+        generateMines(field, minePercentage);
+        hasMineNeighbors =
+            countNeighborMines(*field, field->cursorRow, field->cursorCol) != 0;
+        isMine =
+            *cellAtIndex(*field, field->cursorRow, field->cursorCol) == MINE;
+    } while (hasMineNeighbors || isMine);
+}
+
+bool performAction(Field *const field, const char action,
+                   const size_t minePercentage, bool *first) {
     switch (action) {
     case 'w':
         if (field->cursorRow > 0)
@@ -215,17 +231,7 @@ bool performAction(Field *const field, const char action, bool *first,
         break;
     case ' ':
         if (*first) {
-            bool hasMineNeighbors;
-            bool isMine;
-            do {
-                generateMines(field, minePercentage);
-
-                hasMineNeighbors = countNeighborMines(*field, field->cursorRow,
-                                                      field->cursorCol) != 0;
-                isMine = *cellAtIndex(*field, field->cursorRow,
-                                      field->cursorCol) == MINE;
-
-            } while (hasMineNeighbors || isMine);
+            generateAtCursor(field, minePercentage);
             *first = false;
         }
         if (openAtCursor(field) == MINE) {
@@ -282,7 +288,7 @@ void runGame(Field *const field) {
         printField(*field);
         read(STDIN_FILENO, &action, 1);
         action = tolower(action);
-        running = performAction(field, action, &first, MINE_PERCENTAGE);
+        running = performAction(field, action, MINE_PERCENTAGE, &first);
         printf("%c[%zuA", 27, field->rows);
         printf("%c[%zuD", 27, field->cols * 3);
     }
