@@ -26,13 +26,13 @@ void enableCanonical() {
 
 #define MAX_MINE_PERCENTAGE 50
 
-typedef enum { EMPTY, MINE } ECell;
-typedef enum { OPEN, CLOSED, FLAGGED } ECellState;
+typedef enum { EMPTY, MINE } Cell;
+typedef enum { OPEN, CLOSED, FLAGGED } CellState;
 
 typedef struct {
     size_t rows, cols;
-    ECell *cells;
-    ECellState *states;
+    Cell *cells;
+    CellState *states;
     size_t cursorRow, cursorCol;
     size_t numMines, numClosed;
 } Field;
@@ -57,8 +57,8 @@ void freeField(Field *const field) {
 
 void fieldResize(Field *const field, const size_t rows, const size_t cols) {
     freeField(field);
-    field->cells = (ECell *)malloc(sizeof(ECell) * rows * cols);
-    field->states = (ECellState *)malloc(sizeof(ECellState) * rows * cols);
+    field->cells = (Cell *)malloc(sizeof(Cell) * rows * cols);
+    field->states = (CellState *)malloc(sizeof(CellState) * rows * cols);
     field->rows = rows;
     field->cols = cols;
     for (size_t i = 0; i < rows * cols; i++) {
@@ -68,7 +68,7 @@ void fieldResize(Field *const field, const size_t rows, const size_t cols) {
     field->numClosed = rows * cols;
 }
 
-ECell *cellAtIndex(const Field field, const size_t row, const size_t col) {
+Cell *cellAtIndex(const Field field, const size_t row, const size_t col) {
     if (row >= field.rows || col >= field.cols) {
         printf("ERROR: Index out of bounds.\n");
         exit(1);
@@ -76,7 +76,7 @@ ECell *cellAtIndex(const Field field, const size_t row, const size_t col) {
     return &field.cells[row * field.cols + col];
 }
 
-ECellState *stateAtIndex(const Field field, const size_t row,
+CellState *stateAtIndex(const Field field, const size_t row,
                          const size_t col) {
     if (row >= field.rows || col >= field.cols) {
         printf("ERROR: Index out of bounds.\n");
@@ -96,7 +96,7 @@ void generateMines(Field *const field, const size_t minePercentage) {
     }
     field->numMines = field->rows * field->cols * minePercentage / 100;
     size_t row = 0, col = 0;
-    ECell *cell;
+    Cell *cell;
 
     for (size_t i = 0; i < field->rows * field->cols; i++)
         field->cells[i] = EMPTY;
@@ -110,8 +110,8 @@ void generateMines(Field *const field, const size_t minePercentage) {
     }
 }
 
-ECell openAtCursor(Field *const field) {
-    ECellState *state =
+Cell openAtCursor(Field *const field) {
+    CellState *state =
         stateAtIndex(*field, field->cursorRow, field->cursorCol);
     if (*state == CLOSED) {
         *state = OPEN;
@@ -122,7 +122,7 @@ ECell openAtCursor(Field *const field) {
 }
 
 void flagAtCursor(const Field field) {
-    ECellState *state = stateAtIndex(field, field.cursorRow, field.cursorCol);
+    CellState *state = stateAtIndex(field, field.cursorRow, field.cursorCol);
     if (*state == CLOSED) {
         *state = FLAGGED;
         return;
