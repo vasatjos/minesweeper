@@ -76,8 +76,7 @@ Cell *cellAtIndex(const Field field, const size_t row, const size_t col) {
     return &field.cells[row * field.cols + col];
 }
 
-CellState *stateAtIndex(const Field field, const size_t row,
-                         const size_t col) {
+CellState *stateAtIndex(const Field field, const size_t row, const size_t col) {
     if (row >= field.rows || col >= field.cols) {
         printf("ERROR: Index out of bounds.\n");
         exit(1);
@@ -111,8 +110,7 @@ void generateMines(Field *const field, const size_t minePercentage) {
 }
 
 Cell openAtCursor(Field *const field) {
-    CellState *state =
-        stateAtIndex(*field, field->cursorRow, field->cursorCol);
+    CellState *state = stateAtIndex(*field, field->cursorRow, field->cursorCol);
     if (*state == CLOSED) {
         *state = OPEN;
         field->numClosed--;
@@ -271,7 +269,7 @@ void printResult(const Field field) {
     if (isMineOpen(field))
         printf("OOPS! You lost...\n");
     else
-        printf("Congratulations, you win!\n");
+        printf("\033[32mCongratulations, you win!\033[0m\n");
 }
 
 void runGame(Field *const field) {
